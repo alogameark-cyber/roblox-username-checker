@@ -1,0 +1,117 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roblox Username Checker</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#0b1020;color:#f4f6ff;font-family:Arial,sans-serif}
+main{max-width:650px;margin:auto}
+.card{background:#151d32;border:1px solid #34405b;border-radius:18px;padding:20px;margin:16px 0}
+h1{font-size:30px;margin:8px 0}
+p{color:#b5bfd6;line-height:1.5}
+input,textarea{width:100%;padding:14px;border-radius:10px;border:1px solid #465575;background:#0b1225;color:white;font-size:16px;margin:8px 0}
+textarea{min-height:120px}
+button{padding:13px 16px;border:0;border-radius:10px;background:#829bff;color:#10152a;font-weight:bold;font-size:15px;margin:5px 4px 5px 0}
+button:disabled{opacity:.5}
+#status{white-space:pre-wrap;padding:12px;background:#0b1225;border-radius:10px;margin-top:12px}
+.result{padding:12px;border-bottom:1px solid #34405b;overflow-wrap:anywhere}
+.available{color:#78edb6}.taken{color:#ff9eae}.error{color:#e0c4ff}
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+<h1>🎮 Roblox Username Checker</h1>
+<p>Kiểm tra tên Roblox bằng API của máy chủ.</p>
+<label for="one">Tên Roblox cần kiểm tra</label>
+<input id="one" maxlength="20" placeholder="Nhập username">
+<button id="single">Kiểm tra tên</button>
+<div id="status" aria-live="polite">Sẵn sàng kiểm tra.</div>
+</div>
+
+<div class="card">
+<h2>Dò nhiều tên</h2>
+<p>Mỗi dòng nhập một tên, tối đa 30 tên mỗi lượt.</p>
+<textarea id="many" placeholder="BlueTiger123&#10;PixelFox456"></textarea>
+<button id="batch">Dò danh sách</button>
+<button id="copy">Sao chép tên khả dụng</button>
+<div id="results"></div>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let availableNames=[];
+
+async function check(names){
+ const response=await fetch('/api/check',{
+  method:'POST',
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({usernames:names})
+ });
+ const data=await response.json();
+ if(!response.ok)throw new Error(data.error||'Máy chủ trả về lỗi.');
+ return data.results;
+}
+
+function showResult(r,container){
+ const div=document.createElement('div');
+ div.className='result';
+ const span=document.createElement('span');
+ span.textContent=r.username+' — '+r.message;
+ span.className=r.status==='available'?'available':
+  r.status==='taken'?'taken':'error';
+ div.appendChild(span);
+ container.appendChild(div);
+}
+
+$('single').onclick=async()=>{
+ const name=$('one').value.trim();
+ if(!name){$('status').textContent='Hãy nhập tên Roblox.';return}
+ const btn=$('single');btn.disabled=true;
+ $('status').textContent='Đang kiểm tra...';
+ try{
+  const results=await check([name]);
+  const r=results[0];
+  $('status').textContent=r? r.username+' — '+r.message:'Không có kết quả.';
+  $('status').className=r&&r.status==='available'?'available':
+   r&&r.status==='taken'?'taken':'error';
+ }catch(e){$('status').textContent='Lỗi: '+e.message}
+ finally{btn.disabled=false}
+};
+
+$('batch').onclick=async()=>{
+ const names=[...new Set($('many').value.split(/\n/)
+  .map(x=>x.trim()).filter(Boolean))];
+ if(!names.length){$('results').textContent='Hãy nhập danh sách tên.';return}
+ if(names.length>30){$('results').textContent='Tối đa 30 tên mỗi lượt.';return}
+ const btn=$('batch');btn.disabled=true;
+ $('results').replaceChildren();availableNames=[];
+ try{
+  $('status').textContent='Đang kiểm tra danh sách...';
+  const results=await check(names);
+  results.forEach(r=>{
+   showResult(r,$('results'));
+   if(r.status==='available')availableNames.push(r.username);
+  });
+  $('status').textContent='Đã kiểm tra '+results.length+
+   ' tên. Có vẻ khả dụng: '+availableNames.length+
+   '. Hãy xác nhận lại khi đăng ký Roblox.';
+ }catch(e){$('results').textContent='Lỗi: '+e.message}
+ finally{btn.disabled=false}
+};
+
+$('copy').onclick=async()=>{
+ if(!availableNames.length){$('status').textContent='Chưa có tên khả dụng để sao chép.';return}
+ try{
+  await navigator.clipboard.writeText(availableNames.join('\n'));
+  $('status').textContent='Đã sao chép '+availableNames.length+' tên.';
+ }catch(e){
+  $('status').textContent='Trình duyệt không cho sao chép tự động. Các tên: '+availableNames.join(', ');
+ }
+};
+</script>
+</body>
+</html>
