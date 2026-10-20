@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roblox Username Checker</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10131b;color:#edf1ff;font:16px system-ui;padding:16px}
+main{max-width:850px;margin:auto}h1{font-size:27px;margin:0 0 8px}.muted{color:#aab4ca;line-height:1.5}
+.card{background:#191e2b;border:1px solid #30394d;border-radius:16px;padding:16px;margin:14px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px}
+label{display:block;color:#aab4ca;font-size:13px;margin-bottom:6px}input,select{width:100%;padding:11px;border-radius:10px;border:1px solid #30394d;background:#0f1420;color:#edf1ff;font:inherit}
+.checks{display:flex;flex-wrap:wrap;gap:14px;margin:12px 0}.checks label{display:flex;gap:6px;align-items:center}.checks input{width:auto}
+button{padding:11px 13px;border:0;border-radius:10px;background:#8aa5ff;color:#101626;font-weight:700;cursor:pointer}.secondary{background:#2a3348;color:#edf1ff;border:1px solid #3a4762}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.status{color:#ffd479;white-space:pre-wrap;font-size:14px}
+#results{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}.item{background:#111725;border:1px solid #30394d;border-radius:10px;padding:10px}.available{color:#73d6a4}.taken{color:#ff8b8b}.invalid,.error{color:#ffd479}.tiny{font-size:12px;color:#aab4ca}
+</style></head><body><main>
+<h1>🔎 Roblox Username Checker</h1><p class="muted">Tạo username theo tiền tố và độ dài, rồi kiểm tra bằng máy chủ của website. Không cần đăng nhập Roblox.</p>
+<section class="card">
+<div class="grid">
+<div><label for="prefix">Tiền tố (na, uh, us...)</label><input id="prefix" placeholder="na"></div>
+<div><label for="length">Tổng độ dài (3–20)</label><input id="length" type="number" min="3" max="20" value="4"></div>
+<div><label for="count">Số tên cần thử (tối đa 30/lượt)</label><input id="count" type="number" min="1" max="30" value="10"></div>
+<div><label for="suffix">Hậu tố cố định (tùy chọn)</label><input id="suffix" placeholder="7"></div>
+</div>
+<div class="checks"><label><input id="letters" type="checkbox" checked> Chữ a-z</label><label><input id="digits" type="checkbox" checked> Số 0-9</label><label><input id="underscore" type="checkbox"> Dấu _</label></div>
+<div><label for="custom">Bộ ký tự tùy chọn (nếu nhập sẽ thay bộ chữ/số)</label><input id="custom" placeholder="abc123"></div>
+<div class="actions"><button id="generate">Tạo tên</button><button id="check">Tự kiểm tra trên Roblox</button><button class="secondary" id="copy">Sao chép tên khả dụng</button><button class="secondary" id="download">Tải kết quả TXT</button></div>
+<p id="status" class="status" aria-live="polite">Tạo danh sách rồi bấm kiểm tra.</p>
+<p class="tiny">Mỗi lượt tối đa 30 tên, có khoảng nghỉ để giảm nguy cơ bị giới hạn. Nếu Roblox từ chối yêu cầu, kết quả được ghi là lỗi/chưa xác minh, không phải tên trống.</p>
+</section>
+<section class="card"><h2 style="font-size:20px;margin-top:0">Kết quả</h2><div id="summary" class="muted">Chưa có kết quả.</div><div id="results"></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);let candidates=[],results=[];
+function pool(){if($('custom').value.trim())return [...new Set($('custom').value.trim().split('').filter(c=>/[a-zA-Z0-9_]/.test(c)))];let s='';if($('letters').checked)s+='abcdefghijklmnopqrstuvwxyz';if($('digits').checked)s+='0123456789';if($('underscore').checked)s+='_';return [...new Set(s.split(''))]}
+function valid(s){return s.length>=3&&s.length<=20&&/^[A-Za-z0-9_]+$/.test(s)&&!s.startsWith('_')&&!s.endsWith('_')&&!s.includes('__')}
+function render(){const box=$('results');box.innerHTML='';results.forEach(r=>{const d=document.createElement('div');d.className='item';const b=document.createElement('b');b.textContent=r.username;const p=document.createElement('div');p.className=r.status;p.textContent=({available:'✓ API báo khả dụng',taken:'Đã sử dụng',invalid:'Không hợp lệ/không khả dụng',error:'Lỗi — chưa xác minh'})[r.status]||r.status;const s=document.createElement('div');s.className='tiny';s.textContent=r.message||'';d.append(b,p,s);box.append(d)});let a=results.filter(r=>r.status==='available').length,t=results.filter(r=>r.status==='taken').length,e=results.filter(r=>r.status==='error').length;$('summary').textContent=`Đã kiểm tra ${results.length} • Khả dụng: ${a} • Đã dùng: ${t} • Lỗi/chưa xác minh: ${e}`}
+$('generate').onclick=()=>{let pre=$('prefix').value.trim(),suf=$('suffix').value.trim(),len=+$('length').value,count=Math.max(1,Math.min(30,+$('count').value||1)),p=pool();if(!Number.isInteger(len)||len<3||len>20)return $('status').textContent='Độ dài phải từ 3 đến 20.';if(!/^[A-Za-z0-9_]*$/.test(pre+suf))return $('status').textContent='Tiền tố/hậu tố chỉ dùng chữ, số hoặc _.';let n=len-pre.length-suf.length;if(n<0)return $('status').textContent='Tiền tố và hậu tố dài hơn tổng độ dài.';if(n>0&&!p.length)return $('status').textContent='Chọn chữ/số hoặc nhập bộ ký tự.';let set=new Set(),tries=0;while(set.size<count&&tries<count*150){let mid='';for(let i=0;i<n;i++)mid+=p[Math.floor(Math.random()*p.length)];let name=pre+mid+suf;tries++;if(valid(name))set.add(name)}candidates=[...set];results=[];render();$('status').textContent=`Đã tạo ${candidates.length} tên. Bấm tự kiểm tra để gửi đến máy chủ.`}
+$('check').onclick=async()=>{if(!candidates.length)return $('status').textContent='Hãy tạo danh sách trước.';$('check').disabled=true;results=[];render();try{for(let i=0;i<candidates.length;i+=30){$('status').textContent=`Đang kiểm tra ${Math.min(i+30,candidates.length)}/${candidates.length}...`;const res=await fetch('/api/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usernames:candidates.slice(i,i+30)})});const data=await res.json();if(!res.ok||data.error)throw Error(data.error||`HTTP ${res.status}`);results.push(...data.results);render();if(data.results.some(r=>r.status==='error')){ $('status').textContent='Roblox có thể đang giới hạn hoặc từ chối một số yêu cầu. Xem mục lỗi; không coi lỗi là tên khả dụng.';break}}if(!results.some(r=>r.status==='error'))$('status').textContent='Hoàn tất. Xác nhận lại tên khả dụng khi đăng ký Roblox.'}catch(e){$('status').textContent='Lỗi kết nối máy chủ: '+e.message}finally{$('check').disabled=false}};
+$('copy').onclick=async()=>{let s=results.filter(r=>r.status==='available').map(r=>r.username).join('\n');if(!s)return $('status').textContent='Chưa có tên nào được API báo khả dụng.';try{await navigator.clipboard.writeText(s);$('status').textContent='Đã sao chép tên khả dụng.'}catch(e){$('status').textContent='Không thể tự sao chép trong trình duyệt này.'}};
+$('download').onclick=()=>{if(!results.length)return $('status').textContent='Chưa có kết quả.';let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([results.map(r=>`${r.username}\t${r.status}\t${r.message||''}`).join('\n')],{type:'text/plain;charset=utf-8'}));a.download='roblox-username-results.txt';a.click();URL.revokeObjectURL(a.href)};
+</script></body></html>
